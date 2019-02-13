@@ -14,8 +14,20 @@ class Membre:
         self.current_choice = self.liste[self.sadness]
         return self.current_choice
 
+    @property
     def is_last_choice(self):
         return self.sadness + 1 == len(self.liste)
+
+    @property
+    def score(self):
+        if self.is_last_choice:
+            return 99999
+        else:
+            next_project_fullness = len(current_matching.get_projet(self.liste[self.sadness + 1]).membres)
+            if next_project_fullness > 5:
+                return self.sadness + 10
+            else:
+                return self.sadness
 
     def __repr__(self):
         return "{} : projet n°{}".format(self.nom, self.current_choice + 1)
@@ -32,12 +44,21 @@ class Projet:
             return self.__downgrade_one__()
 
     def __downgrade_one__(self) -> Membre:
-        to_remove = random.choice(self.membres)
-        if not to_remove.is_last_choice():
-            self.membres.remove(to_remove)
-            return to_remove
+        min_sadness = self.membres[0].sadness
+        list_to_remove = []
+        for membre in self.membres:
+            if membre.sadness < min_sadness:
+                list_to_remove = [membre]
+            elif membre.sadness == min_sadness:
+                list_to_remove.append(membre)
+
+        if len(list_to_remove) == 1:
+            to_remove = list_to_remove[0]
         else:
-            self.__downgrade_one__()
+            to_remove = min(list_to_remove, key=lambda member: membre.score)
+
+        self.membres.remove(to_remove)
+        return to_remove
 
     def __repr__(self):
         return "{} :\n\t-".format(self.nom) + "\n\t-".join([str(membre) for membre in self.membres])
@@ -66,6 +87,7 @@ class Matching:
                 splitted_line = line.split()
                 self.list_membres.append(Membre(" ".join(splitted_line[:-1]), splitted_line[-1]))
 
+        random.shuffle(self.list_membres)
         for people in self.list_membres:
             self.add_membre(people)
 
@@ -79,11 +101,20 @@ class Matching:
             deleted_membre.next_choice()
             self.add_membre(deleted_membre)
 
+    def get_projet(self, project_number: int) -> Projet:
+        return self.list_projets[project_number]
+
     def __repr__(self):
-        return "\n".join(str(projet) for projet in self.list_projets) + "\n SCORE = {} => {}% satisfaction".format(
-            self.score_abs, self.score_rel)
+        return "SCORE = {} => {}% satisfaction".format(self.score_abs, self.score_rel)
+
+    def print(self):
+        print("\n".join(str(projet) for projet in self.list_projets) + "\n SCORE = {} => {}% satisfaction".format(
+            self.score_abs, self.score_rel))
 
 
-liste_matchings = [Matching() for x in range(100)]
+liste_matchings = []
+for x in range(100):
+    current_matching = Matching()
+    liste_matchings.append(current_matching)
 
-print(min(liste_matchings, key=lambda matching: matching.score_abs))
+min(liste_matchings, key=lambda matching: matching.score_abs).print()
